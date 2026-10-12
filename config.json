@@ -1,0 +1,18 @@
+{
+  "auto_scan_steam": true,
+  "bandwidth_limit_kbps": 0,
+  "big_picture_style": "classic",
+  "controller_enabled": true,
+  "default_source": "ankergames",
+  "delete_archive_after_install": true,
+  "first_run_complete": true,
+  "games_dir": "C:\\Games",
+  "layout_mode": "preset",
+  "library_sort": "name",
+  "library_view_mode": "grid",
+  "max_concurrent_downloads": 2,
+  "store_page_size": 24,
+  "temp_dir": "C:\\Users\\super\\Documents\\opensteam\\App\\temp",
+  "theme": "steam_modern",
+  "theme_preset": "steam_modern"
+}

@@ -1,0 +1,32 @@
+{
+  "_comment": "Example catalog. Set \"enabled\" to true to show it as a store tab. Replace the entries with archives you are allowed to distribute. 'size' accepts bytes or strings like '1.5 GB'.",
+  "enabled": false,
+  "id": "my-catalog",
+  "name": "My Catalog",
+  "color": "#0ea5e9",
+  "priority": 40,
+  "catalog_url": "",
+  "games": [
+    {
+      "id": "example-game",
+      "title": "Example Game",
+      "featured": true,
+      "description": "Full description shown on the game page.",
+      "short_description": "One-line pitch shown on the store card.",
+      "cover": "https://example.com/covers/example-game.jpg",
+      "hero": "https://example.com/heroes/example-game.jpg",
+      "size": "250 MB",
+      "genres": ["Action", "Indie"],
+      "developer": "Example Dev",
+      "publisher": "Example Pub",
+      "release_date": "2024-05-01",
+      "version": "1.2.0",
+      "screenshots": ["https://example.com/shots/1.jpg"],
+      "system_requirements": "OS: Windows 10\nMemory: 4 GB RAM",
+      "download_url": "https://example.com/files/example-game.zip",
+      "filename": "example-game.zip",
+      "sha256": "",
+      "password": ""
+    }
+  ]
+}

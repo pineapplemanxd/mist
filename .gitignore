@@ -1,0 +1,26 @@
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+.pytest_cache/
+
+# Environments & builds
+.venv/
+venv/
+build/
+dist/
+*.spec
+
+# Runtime generated caches and data
+cache/
+temp/
+logs/
+data/
+*.log
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
