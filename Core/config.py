@@ -52,6 +52,17 @@ class Config:
                 self._data.update(stored)
                 if "theme" in stored and "theme_preset" not in stored:
                     self._data["theme_preset"] = stored["theme"]
+                # Ensure temp_dir works across any user machine
+                stored_temp = stored.get("temp_dir")
+                if stored_temp:
+                    try:
+                        p = Path(stored_temp)
+                        if not p.exists() and not p.parent.exists():
+                            self._data["temp_dir"] = str(DEFAULT_TEMP_DIR)
+                    except (OSError, ValueError):
+                        self._data["temp_dir"] = str(DEFAULT_TEMP_DIR)
+                else:
+                    self._data["temp_dir"] = str(DEFAULT_TEMP_DIR)
         except (OSError, ValueError) as exc:
             log.error("Could not read config %s: %s (using defaults)", self._path, exc)
 

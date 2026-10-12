@@ -12,7 +12,7 @@
   "library_view_mode": "grid",
   "max_concurrent_downloads": 2,
   "store_page_size": 24,
-  "temp_dir": "C:\\Users\\super\\Documents\\opensteam\\App\\temp",
+  "temp_dir": "",
   "theme": "steam_modern",
   "theme_preset": "steam_modern"
 }
