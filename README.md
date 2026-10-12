@@ -7,12 +7,12 @@
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![PySide6](https://img.shields.io/badge/GUI-PySide6%20%2F%20Qt6-41CD52?style=for-the-badge&logo=qt&logoColor=white)](https://www.qt.io/)
 [![Platform Windows](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://www.microsoft.com/)
-[![Zero Telemetry](https://img.shields.io/badge/Privacy-Zero%20Telemetry-success?style=for-the-badge&logo=shield&logoColor=white)](#privacy-first)
+[![Zero Telemetry](https://img.shields.io/badge/Privacy-Zero%20Telemetry-success?style=for-the-badge&logo=shield&logoColor=white)](#-privacy-first)
 [![License Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue?style=for-the-badge)](LICENSE)
 
 *Browse, download, manage, and launch your games across multiple sources from a single polished client.*
 
-[Features](#-key-features) • [Screenshots](#-interface-showcase) • [Installation](#-getting-started) • [Compiling & Transferring](#-repository-structure--git-transfer) • [Gamepad Support](#-gamepad--big-picture-mode) • [Themes](#-theme--layout-presets)
+[Features](#-key-features) • [Screenshots](#-interface-showcase) • [Installation](#-getting-started) • [Repository Structure](#-repository-structure) • [Gamepad Support](#-gamepad--big-picture-mode) • [Themes](#-theme--layout-presets)
 
 </div>
 
@@ -88,59 +88,78 @@
   - **Clean Light**: Daylight aesthetic with high-contrast text and clean blue accents.
   - 1-click Quick Theme Switcher in the top bar and live preview swatches in Settings.
 
-- **🛡️ Privacy-First Architecture**
+- **🛡️ Privacy-First**
   - 100% local SQLite database.
   - Zero telemetry, zero analytics, zero external user accounts.
   - Silent headless browser automation without popups or sync prompts.
 
 ---
 
-## 📁 Repository Structure & Git Transfer
+## 📁 Repository Structure
 
 ```text
-App/
-├── main.py             <-- Application entry point
-├── config.json         <-- User preferences & default settings
-├── requirements.txt    <-- Only PySide6 is required!
-├── test_full_suite.py  <-- Automated test suite (57 tests)
-├── Assets/             <-- Icons, placeholders, and graphics
-│   └── screenshots/    <-- High-resolution UI screenshots
-├── Core/               <-- Backend engines
-│   ├── config.py       <-- Settings manager & theme migrations
-│   ├── controller.py   <-- XInput & WinMM gamepad driver
-│   ├── database.py     <-- SQLite library storage
-│   ├── downloader.py   <-- Asynchronous download manager
-│   ├── extractor.py    <-- Safe archive extraction & tar/7z fallback
-│   ├── images.py       <-- Asynchronous disk-cached image loader
-│   ├── launcher.py     <-- Game executable detection & process tracker
-│   ├── library.py      <-- Library management & Steam import
-│   ├── logger.py       <-- Structured logging
-│   ├── paths.py        <-- Application directories
-│   ├── sources.py      <-- Catalog source interfaces & registry
-│   └── steam_scanner.py<-- Steam appmanifest ACF reader
-├── Scripts/            <-- Store plugins & resolvers
-│   ├── ankergames.py   <-- Anker Games catalog & CDP resolver
-│   ├── steamrip.py     <-- SteamRip catalog & mirror resolver
-│   └── json_catalog_source.py
-└── UI/                 <-- Qt interface components
-    ├── big_picture.py  <-- Fullscreen Big Picture (Steam + PS5 styles)
-    ├── detail_view.py  <-- Game details & SteamDB action bar
-    ├── downloads_view.py<-- Downloads monitor & progress cards
-    ├── library_view.py <-- Game library grid & list delegates
-    ├── main_window.py  <-- Adaptive layout window (Top Nav / Sidebar)
-    ├── settings_view.py<-- Appearance & directory preferences
-    ├── store_view.py   <-- Store catalog & card delegates
-    ├── theme.py        <-- CSS stylesheets, palettes & presets
-    └── wizard.py       <-- First-run configuration wizard
+mist/
+├── Assets/                 <-- Icons, placeholders, and UI screenshots
+│   ├── icon.ico
+│   ├── icon.png
+│   └── screenshots/        <-- All 10 high-resolution feature screenshots
+│       ├── 01_library_view.png
+│       ├── 02_store_view.png
+│       ├── 03_detail_view.png
+│       ├── 04_downloads_view.png
+│       ├── 05_settings_view.png
+│       ├── 06_big_picture_console.png
+│       ├── 07_big_picture_ps_store.png
+│       ├── 08_big_picture_classic.png
+│       ├── 09_classic_2003_theme.png
+│       └── 10_epic_sidebar_theme.png
+├── Core/                   <-- Backend engines
+│   ├── config.py           <-- Settings manager & theme migrations
+│   ├── controller.py       <-- XInput & WinMM gamepad driver
+│   ├── database.py         <-- SQLite library storage
+│   ├── downloader.py       <-- Asynchronous download manager
+│   ├── extractor.py        <-- Safe archive extraction & tar/7z fallback
+│   ├── images.py           <-- Asynchronous disk-cached image loader
+│   ├── launcher.py         <-- Game executable detection & process tracker
+│   ├── library.py          <-- Library management & Steam import
+│   ├── logger.py           <-- Structured logging
+│   ├── paths.py            <-- Application directories
+│   ├── sources.py          <-- Catalog source interfaces & registry
+│   └── steam_scanner.py    <-- Steam appmanifest ACF reader
+├── Scripts/                <-- Store plugins & resolvers
+│   ├── catalogs/           <-- Local JSON catalog definitions
+│   ├── ankergames.py       <-- Anker Games catalog & CDP resolver
+│   ├── json_catalog_source.py
+│   └── steamrip.py         <-- SteamRip catalog & mirror resolver
+├── UI/                     <-- Qt interface components
+│   ├── actions.py          <-- Common UI actions & dialogs
+│   ├── big_picture.py      <-- Fullscreen Big Picture (Steam + PS5 styles)
+│   ├── common.py           <-- Common widgets, badges & async runners
+│   ├── context.py          <-- AppContext dependency injection
+│   ├── detail_view.py      <-- Game details & SteamDB action bar
+│   ├── downloads_view.py   <-- Downloads monitor & progress cards
+│   ├── library_view.py     <-- Game library grid & list delegates
+│   ├── main_window.py      <-- Adaptive layout window (Top Nav / Sidebar)
+│   ├── settings_view.py    <-- Appearance & directory preferences
+│   ├── store_view.py       <-- Store catalog & card delegates
+│   ├── theme.py            <-- CSS stylesheets, palettes & presets
+│   └── wizard.py           <-- First-run configuration wizard
+├── .gitignore              <-- Excludes caches, temporary downloads, and databases
+├── config.json             <-- Default user settings (Steam Modern preset)
+├── LICENSE                 <-- Apache License 2.0
+├── main.py                 <-- Application entry point
+├── README.md               <-- Documentation & showcase
+├── requirements.txt        <-- Only PySide6 is required!
+└── test_full_suite.py      <-- Automated integration test suite (57 tests)
 ```
 
-### 🚫 Files Ignored by `.gitignore` (Do NOT commit to Git)
-These directories are generated dynamically at runtime and are automatically excluded:
-- `cache/` — Downloaded image thumbnails and cover art cache.
+### 🚫 Files Ignored by `.gitignore` (Automatically Excluded)
+These folders are generated dynamically at runtime and are automatically excluded:
+- `cache/` — Image thumbnail disk caches (downloaded dynamically).
 - `temp/` — Temporary download staging folder and active zip archives.
 - `data/` — Local SQLite user database (`library.db`).
 - `logs/` — Runtime log files (`mist.log`, `opensteam.log`).
-- `__pycache__/` — Compiled Python bytecode (`.pyc`).
+- `__pycache__/` — Python bytecode cache (`.pyc`).
 
 ---
 
@@ -152,9 +171,10 @@ These directories are generated dynamically at runtime and are automatically exc
 
 ### Installation
 
-1. **Clone or transfer the files**:
+1. **Clone the repository**:
    ```bash
-   cd App
+   git clone https://github.com/pineapplemanxd/mist.git
+   cd mist
    ```
 
 2. **Create a virtual environment (optional but recommended)**:
