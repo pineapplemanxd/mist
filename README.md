@@ -31,7 +31,7 @@
 | ![Detail View](Assets/screenshots/03_detail_view.png) | ![Downloads View](Assets/screenshots/04_downloads_view.png) |
 
 ### 3. Fullscreen Big Picture Mode
-| PlayStation 5 Console Style (Library) | PlayStation Store Shelves |
+| PlayStation 5 inspired Console Style (Library) | PlayStation Store Shelves |
 |:---:|:---:|
 | ![Big Picture PS5](Assets/screenshots/06_big_picture_console.png) | ![Big Picture PS Store](Assets/screenshots/07_big_picture_ps_store.png) |
 
@@ -77,8 +77,8 @@
   - Press the **Guide / Xbox / PS button** (or Back + Start chord) anywhere to toggle Big Picture mode.
   - Two distinct Big Picture visual styles:
     - **Classic**: Authentic Steam Big Picture aesthetic with dark navy gradient cards and Steam controller glyphs (`[A]`, `[B]`, `[X]`, `[Y]`).
-    - **Console**: Sleek obsidian PlayStation 5 UI with dynamic hero wallpapers and authentic PS glyphs (`✕`, `○`, `□`, `△`).
-  - Built-in **PlayStation Store** browsing experience featuring *Featured & Trending*, *New Releases*, *Anker Games*, and *SteamRip* shelves.
+    - **Console**: Sleek obsidian PlayStation 5 inspired UI with dynamic hero wallpapers and authentic PS glyphs (`✕`, `○`, `□`, `△`).
+  - Built-in **PlayStation Store** inspired browsing experience featuring *Featured & Trending*, *New Releases*, *Anker Games*, and *SteamRip* shelves.
 
 - **🎨 Themes & Layout Presets**
   - **Steam Modern** (Default): Authentic dark Steam palette (`#171a21`, `#1b2838`) with top navigation tabs.
