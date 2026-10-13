@@ -6,7 +6,10 @@ flow from Scripts/AnkerGames.lua via Chromium DevTools Protocol (Edge/Chrome).
 """
 from __future__ import annotations
 
-import asyncio
+try:
+    import asyncio
+except ImportError:
+    asyncio = None  # type: ignore
 import html
 import json
 import os
@@ -65,6 +68,8 @@ def _free_port() -> int:
 
 
 async def _resolve_cdp_async(game_url: str, temp_dir: Path, timeout: float = 45.0) -> tuple[str, str]:
+    if asyncio is None:
+        raise SourceError("Missing dependency 'asyncio' required for Anker Games verification.")
     try:
         import websockets
     except ImportError:
@@ -124,10 +129,9 @@ async def _resolve_cdp_async(game_url: str, temp_dir: Path, timeout: float = 45.
         "--metrics-recording-only",
         "--no-service-autorun",
         "--password-store=basic",
-        "--headless=new",
-        "--disable-gpu",
-        "--window-position=-9999,-9999",
-        "--window-size=1024,768",
+        "--disable-blink-features=AutomationControlled",
+        "--window-position=-2000,-2000",
+        "--window-size=1280,800",
         "about:blank",
     ]
     creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
@@ -177,6 +181,9 @@ async def _resolve_cdp_async(game_url: str, temp_dir: Path, timeout: float = 45.
                     "downloadPath": str(temp_dir),
                     "eventsEnabled": True,
                 })
+                await send("Page.addScriptToEvaluateOnNewDocument", {
+                    "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined});"
+                })
 
                 await send("Page.navigate", {"url": game_url})
 
@@ -196,35 +203,47 @@ async def _resolve_cdp_async(game_url: str, temp_dir: Path, timeout: float = 45.
                     should_inject = (method in ("Page.loadEventFired", "Page.domContentEventFired") or (time.time() - start_t > 2.5))
                     if should_inject and not injected:
                         js = """
-                        (function() {
+                        (async function() {
                             let match = document.body.innerHTML.match(/generateDownloadUrl\\(\\s*(\\d+)\\s*\\)/);
                             if (match && match[1]) {
                                 let downloadId = match[1];
                                 let token = document.querySelector('meta[name="csrf-token"]')?.content || '';
-                                fetch('/generate-download-url/' + downloadId, {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        'X-CSRF-TOKEN': token,
-                                        'X-Requested-With': 'XMLHttpRequest'
-                                    },
-                                    body: JSON.stringify({'g-recaptcha-response': 'development-mode'})
-                                })
-                                .then(res => res.json())
-                                .then(data => {
+                                try {
+                                    let res = await fetch('/generate-download-url/' + downloadId, {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'X-CSRF-TOKEN': token,
+                                            'X-Requested-With': 'XMLHttpRequest'
+                                        },
+                                        body: JSON.stringify({})
+                                    });
+                                    let data = await res.json();
                                     if (data && data.download_url) {
                                         window.location.href = data.download_url;
                                     }
-                                }).catch(err => console.error(err));
+                                } catch (e) {
+                                    console.error(e);
+                                }
                             }
                         })();
                         """
-                        await send("Runtime.evaluate", {"expression": js})
+                        await send("Runtime.evaluate", {"expression": js, "awaitPromise": True})
                         injected = True
                     elif method in ("Browser.downloadWillBegin", "Page.downloadWillBegin"):
                         download_url_found = msg.get("params", {}).get("url")
                         filename_found = msg.get("params", {}).get("suggestedFilename")
                         break
+                    elif method == "Network.responseReceived":
+                        resp = msg.get("params", {}).get("response", {})
+                        headers = resp.get("headers", {})
+                        cd = headers.get("content-disposition", "") or headers.get("Content-Disposition", "")
+                        if "attachment" in cd.lower() and resp.get("url"):
+                            download_url_found = resp.get("url")
+                            fn_m = re.search(r'filename=["\']?([^"\';]+)["\']?', cd)
+                            if fn_m:
+                                filename_found = fn_m.group(1).strip()
+                            break
 
                 if not download_url_found:
                     raise SourceError("Anker Games verification timed out. Please try again.")
@@ -433,6 +452,8 @@ class AnkerGamesSource(SourceBase):
         return item
 
     def resolve_download(self, item: CatalogItem, temp_dir: Path) -> DownloadSpec:
+        if asyncio is None:
+            raise SourceError("Missing dependency 'asyncio' required for Anker Games download.")
         slug = item.extra.get("slug") or item.id
         game_url = item.store_url or f"{BASE_URL}/game/{slug}"
         log.info("Resolving Anker Games download via script for: %s (%s)", item.title, game_url)

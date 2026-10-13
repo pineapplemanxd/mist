@@ -18,6 +18,17 @@ from typing import Any
 from .logger import get_logger
 from .paths import SCRIPTS_DIR, get_scripts_dirs
 
+# Import anchors for PyInstaller static analysis and standalone bundle inclusion
+try:
+    import asyncio
+except ImportError:
+    pass
+
+try:
+    import websockets
+except ImportError:
+    pass
+
 log = get_logger(__name__)
 
 USER_AGENT = "OpenSteamLibrary/1.0 (+local game library manager)"
@@ -183,13 +194,20 @@ class SourceRegistry:
                     assert spec.loader is not None
                     spec.loader.exec_module(module)
                 except Exception as exc:  # noqa: BLE001 - a broken script must not crash the app
-                    msg = f"{path.name}: {exc}"
-                    log.exception("Failed to load source script %s", path.name)
-                    self.errors.append(msg)
-                    continue
+                    # Fallback to direct module import if dynamic file loading fails
+                    module = None
+                    try:
+                        module = importlib.import_module(f"Scripts.{path.stem}")
+                    except Exception:
+                        module = None
+                    if module is None:
+                        msg = f"{path.name}: {exc}"
+                        log.exception("Failed to load source script %s", path.name)
+                        self.errors.append(msg)
+                        continue
                 for obj in vars(module).values():
                     if isinstance(obj, type) and issubclass(obj, SourceBase) and obj is not SourceBase and obj.id:
-                        if obj.__module__ != mod_name:
+                        if obj.__module__ not in (mod_name, getattr(module, "__name__", "")):
                             continue  # imported, not defined here
                         try:
                             instances = obj.create_all(self.config) if hasattr(obj, "create_all") else [obj(self.config)]
@@ -203,6 +221,18 @@ class SourceRegistry:
                                 continue
                             self._sources[inst.id] = inst
                             log.info("Loaded source %s (%s)", inst.name, inst.id)
+
+        # Ensure essential built-in sources are registered even if filesystem discovery in frozen mode encounters issues
+        if "ankergames" not in self._sources:
+            try:
+                from Scripts.ankergames import AnkerGamesSource
+                inst = AnkerGamesSource(self.config)
+                self._sources[inst.id] = inst
+                self.errors = [e for e in self.errors if not e.startswith("ankergames.py:")]
+                log.info("Loaded built-in fallback source %s (%s)", inst.name, inst.id)
+            except Exception as exc:
+                log.debug("Fallback loading for ankergames failed: %s", exc)
+
 
     def all(self) -> list[SourceBase]:
         return sorted(self._sources.values(), key=lambda s: (s.priority, s.name.lower()))
@@ -228,3 +258,11 @@ BUILTIN_BADGES = {
     "steam": ("Steam", "#2a6fb0"),
     "manual": ("Manual", "#6b7280"),
 }
+
+# Static import anchors for PyInstaller static analysis to guarantee bundling of built-in scripts
+try:
+    import Scripts.ankergames
+    import Scripts.json_catalog_source
+except ImportError:
+    pass
+

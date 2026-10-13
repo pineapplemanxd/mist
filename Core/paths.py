@@ -44,13 +44,24 @@ DATA_DIR = USER_DATA_DIR / "data"
 CACHE_DIR = USER_DATA_DIR / "cache"
 IMAGE_CACHE_DIR = CACHE_DIR / "images"
 LOG_DIR = USER_DATA_DIR / "logs"
-DEFAULT_TEMP_DIR = USER_DATA_DIR / "temp"
+DEFAULT_TEMP_DIR = Path(tempfile.gettempdir()) / "Mist"
 DB_FILE = DATA_DIR / "library.db"
+
+
+def get_bundle_dir() -> Path:
+    """Returns the current bundle directory (sys._MEIPASS in frozen PyInstaller mode)."""
+    if getattr(sys, "frozen", False) or hasattr(sys, "_MEIPASS"):
+        app_dir = Path(sys.executable).resolve().parent
+        return Path(getattr(sys, "_MEIPASS", app_dir))
+    return Path(__file__).resolve().parent.parent
 
 
 def get_scripts_dirs() -> list[Path]:
     dirs: list[Path] = []
-    if SCRIPTS_DIR.is_dir():
+    bundle_scripts = get_bundle_dir() / "Scripts"
+    if bundle_scripts.is_dir():
+        dirs.append(bundle_scripts)
+    elif SCRIPTS_DIR.is_dir() and SCRIPTS_DIR.resolve() not in [d.resolve() for d in dirs]:
         dirs.append(SCRIPTS_DIR)
     # Also support user-added scripts placed next to the executable or in AppData
     appdata_scripts = USER_DATA_DIR / "Scripts"

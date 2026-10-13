@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from .logger import get_logger
-from .paths import CONFIG_FILE, DEFAULT_TEMP_DIR, default_games_dir
+from .paths import CONFIG_FILE, DEFAULT_TEMP_DIR, USER_DATA_DIR, default_games_dir
 
 log = get_logger(__name__)
 
@@ -57,7 +57,12 @@ class Config:
                 if stored_temp:
                     try:
                         p = Path(stored_temp)
-                        if not p.exists() and not p.parent.exists():
+                        old_mist_temp = USER_DATA_DIR / "temp"
+                        if (
+                            p == old_mist_temp
+                            or p.resolve() == old_mist_temp.resolve()
+                            or not p.parent.exists()
+                        ):
                             self._data["temp_dir"] = str(DEFAULT_TEMP_DIR)
                     except (OSError, ValueError):
                         self._data["temp_dir"] = str(DEFAULT_TEMP_DIR)

@@ -262,6 +262,7 @@ class FlowLayout(QLayout):
 
     def addItem(self, item):
         self._items.append(item)
+        self.invalidate()
 
     def count(self):
         return len(self._items)
@@ -270,7 +271,14 @@ class FlowLayout(QLayout):
         return self._items[i] if 0 <= i < len(self._items) else None
 
     def takeAt(self, i):
-        return self._items.pop(i) if 0 <= i < len(self._items) else None
+        if 0 <= i < len(self._items):
+            item = self._items.pop(i)
+            self.invalidate()
+            return item
+        return None
+
+    def expandingDirections(self):
+        return Qt.Orientations(0)
 
     def hasHeightForWidth(self):
         return True
@@ -306,8 +314,8 @@ class FlowLayout(QLayout):
         return y + line_h - rect.y()
 
 
-def chip(text: str) -> QLabel:
-    lbl = QLabel(text)
+def chip(text: str, parent: QWidget | None = None) -> QLabel:
+    lbl = QLabel(text, parent)
     lbl.setObjectName("Chip")
     return lbl
 

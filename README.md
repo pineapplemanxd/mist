@@ -55,7 +55,7 @@
   - One-click launch with game process monitoring.
 
 - **🛒 Multi-Source Store Catalog**
-  - Unified catalog discovery aggregating **Anker Games** and **SteamRip**.
+  - Unified catalog discovery powered by **Anker Games**.
   - Search by game title or filter by genre and download source.
   - Clean cover art cards with size badges, source badges, and instant details navigation.
 
@@ -78,7 +78,7 @@
   - Two distinct Big Picture visual styles:
     - **Classic**: Authentic Steam Big Picture aesthetic with dark navy gradient cards and Steam controller glyphs (`[A]`, `[B]`, `[X]`, `[Y]`).
     - **Console**: Sleek obsidian PlayStation 5 inspired UI with dynamic hero wallpapers and authentic PS glyphs (`✕`, `○`, `□`, `△`).
-  - Built-in **PlayStation Store** inspired browsing experience featuring *Featured & Trending*, *New Releases*, *Anker Games*, and *SteamRip* shelves.
+  - Built-in **PlayStation Store** inspired browsing experience featuring *Featured & Trending*, *New Releases*, and *Anker Games Archive* shelves.
 
 - **🎨 Themes & Layout Presets**
   - **Steam Modern** (Default): Authentic dark Steam palette (`#171a21`, `#1b2838`) with top navigation tabs.
@@ -129,8 +129,7 @@ mist/
 ├── Scripts/                <-- Store plugins & resolvers
 │   ├── catalogs/           <-- Local JSON catalog definitions
 │   ├── ankergames.py       <-- Anker Games catalog & CDP resolver
-│   ├── json_catalog_source.py
-│   └── steamrip.py         <-- SteamRip catalog & mirror resolver
+│   └── json_catalog_source.py
 ├── UI/                     <-- Qt interface components
 │   ├── actions.py          <-- Common UI actions & dialogs
 │   ├── big_picture.py      <-- Fullscreen Big Picture (Steam + PS5 styles)
@@ -207,10 +206,11 @@ You can compile Mist into a standalone Windows executable using PyInstaller:
 
 2. Compile Mist into a self-contained windowed application:
    ```bash
-   pyinstaller --noconsole --name "Mist" --icon "Assets/icon.ico" --add-data "Assets;Assets" --add-data "Scripts;Scripts" main.py
+   pyinstaller Mist.spec
    ```
+   *(Or CLI: `pyinstaller --noconsole --name "Mist" --icon "Assets/icon.ico" --add-data "Assets;Assets" --add-data "Scripts;Scripts" --hidden-import asyncio --hidden-import websockets main.py`)*
 
-3. Your standalone executable will be located in `dist/Mist/Mist.exe`.
+3. Your standalone executable will be located in `dist/Mist.exe`.
 
 ---
 

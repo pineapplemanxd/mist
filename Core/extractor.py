@@ -11,6 +11,7 @@ import os
 import shutil
 import subprocess
 import tarfile
+import tempfile
 import time
 import zipfile
 from pathlib import Path
@@ -295,100 +296,136 @@ def _extract_external(
     exe_7z = _find_7z()
     is_rar = archive.name.lower().endswith(".rar")
     unrar_exe = _find_unrar() if is_rar else None
-
-    tools_to_try: list[tuple[str, list[str]]] = []
-
-    def make_tar_args(exe: str) -> list[str]:
-        args = [exe]
-        if password:
-            args.extend(["--passphrase", password])
-        args.extend(["-xf", str(archive), "-C", str(dest)])
-        return args
-
-    def make_7z_args(exe: str) -> list[str]:
-        args = [exe, "x", str(archive), f"-o{dest}", "-y"]
-        args.append(f"-p{password}" if password else "-p-")
-        return args
-
-    def make_unrar_args(exe: str) -> list[str]:
-        args = [exe, "x", "-y"]
-        args.append(f"-p{password}" if password else "-p-")
-        args.extend([str(archive), str(dest) + os.sep])
-        return args
-
-    if is_rar:
-        # RAR archives: prioritize 7z and unrar over bsdtar (bsdtar has limited/no RAR5 support)
-        if exe_7z:
-            tools_to_try.append(("7-Zip", make_7z_args(exe_7z)))
-        if unrar_exe:
-            tools_to_try.append(("UnRAR", make_unrar_args(unrar_exe)))
-        if tar_exe:
-            tools_to_try.append(("tar", make_tar_args(tar_exe)))
-    elif prefer_7z:
-        if exe_7z:
-            tools_to_try.append(("7-Zip", make_7z_args(exe_7z)))
-        if tar_exe:
-            tools_to_try.append(("tar", make_tar_args(tar_exe)))
-    else:
-        if tar_exe:
-            tools_to_try.append(("tar", make_tar_args(tar_exe)))
-        if exe_7z:
-            tools_to_try.append(("7-Zip", make_7z_args(exe_7z)))
-        if unrar_exe:
-            tools_to_try.append(("UnRAR", make_unrar_args(unrar_exe)))
-
-    if not tools_to_try:
-        raise ExtractionError(
-            "No external extraction tool available (need tar.exe, 7z.exe, or 7za.exe)"
-        )
-
-    last_error = ""
     flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
-    for tool_name, args in tools_to_try:
-        if cancelled and cancelled():
-            raise ExtractionCancelled("Cancelled")
-        if progress:
-            progress(0, 1)
-        try:
-            proc = subprocess.Popen(
-                args,
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                creationflags=flags,
-            )
-            while True:
-                if cancelled and cancelled():
-                    proc.terminate()
-                    try:
-                        proc.wait(timeout=2)
-                    except subprocess.TimeoutExpired:
-                        proc.kill()
-                    raise ExtractionCancelled("Cancelled")
-                try:
-                    stdout, stderr = proc.communicate(timeout=0.2)
-                    break
-                except subprocess.TimeoutExpired:
-                    continue
+    def _execute_extraction(target_file: Path) -> tuple[bool, str]:
+        tools_to_try: list[tuple[str, list[str]]] = []
 
-            if proc.returncode == 0:
-                if progress:
-                    progress(1, 1)
-                return
-            err_msg = stderr.strip() or stdout.strip() or f"exit code {proc.returncode}"
-            last_error = f"{tool_name} failed: {err_msg}"
-            log.warning(
-                "External extraction with %s failed: %s; trying next available tool",
-                tool_name,
-                err_msg,
+        def make_tar_args(exe: str) -> list[str]:
+            args = [exe]
+            if password:
+                args.extend(["--passphrase", password])
+            args.extend(["-xf", str(target_file), "-C", str(dest)])
+            return args
+
+        def make_7z_args(exe: str) -> list[str]:
+            args = [exe, "x", str(target_file), f"-o{dest}", "-y"]
+            args.append(f"-p{password}" if password else "-p-")
+            return args
+
+        def make_unrar_args(exe: str) -> list[str]:
+            args = [exe, "x", "-y"]
+            args.append(f"-p{password}" if password else "-p-")
+            args.extend([str(target_file), str(dest) + os.sep])
+            return args
+
+        if is_rar:
+            if exe_7z:
+                tools_to_try.append(("7-Zip", make_7z_args(exe_7z)))
+            if unrar_exe:
+                tools_to_try.append(("UnRAR", make_unrar_args(unrar_exe)))
+            if tar_exe:
+                tools_to_try.append(("tar", make_tar_args(tar_exe)))
+        elif prefer_7z:
+            if exe_7z:
+                tools_to_try.append(("7-Zip", make_7z_args(exe_7z)))
+            if tar_exe:
+                tools_to_try.append(("tar", make_tar_args(tar_exe)))
+        else:
+            if tar_exe:
+                tools_to_try.append(("tar", make_tar_args(tar_exe)))
+            if exe_7z:
+                tools_to_try.append(("7-Zip", make_7z_args(exe_7z)))
+            if unrar_exe:
+                tools_to_try.append(("UnRAR", make_unrar_args(unrar_exe)))
+
+        if not tools_to_try:
+            raise ExtractionError(
+                "No external extraction tool available (need tar.exe, 7z.exe, or 7za.exe)"
             )
-        except ExtractionCancelled:
-            raise
-        except Exception as exc:
-            last_error = f"{tool_name} error: {exc}"
-            log.warning("External extraction error with %s: %s", tool_name, exc)
+
+        last_err = ""
+        for tool_name, args in tools_to_try:
+            if cancelled and cancelled():
+                raise ExtractionCancelled("Cancelled")
+            if progress:
+                progress(0, 1)
+            try:
+                proc = subprocess.Popen(
+                    args,
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    creationflags=flags,
+                )
+                while True:
+                    if cancelled and cancelled():
+                        proc.terminate()
+                        try:
+                            proc.wait(timeout=2)
+                        except subprocess.TimeoutExpired:
+                            proc.kill()
+                        raise ExtractionCancelled("Cancelled")
+                    try:
+                        stdout, stderr = proc.communicate(timeout=0.2)
+                        break
+                    except subprocess.TimeoutExpired:
+                        continue
+
+                if proc.returncode == 0:
+                    if progress:
+                        progress(1, 1)
+                    return True, ""
+                err_msg = stderr.strip() or stdout.strip() or f"exit code {proc.returncode}"
+                last_err = f"{tool_name} failed: {err_msg}"
+                log.warning(
+                    "External extraction with %s failed: %s; trying next available tool",
+                    tool_name,
+                    err_msg,
+                )
+            except ExtractionCancelled:
+                raise
+            except Exception as exc:
+                last_err = f"{tool_name} error: {exc}"
+                log.warning("External extraction error with %s: %s", tool_name, exc)
+        return False, last_err
+
+    success, last_error = _execute_extraction(archive)
+    if success:
+        return
+
+    # If extraction failed because external tool could not open the archive
+    # (e.g. Windows AppData ACL restrictions, permission lock), retry from system temp dir
+    err_lower = last_error.lower()
+    needs_temp_relocation = (
+        "failed to open" in err_lower
+        or "cannot open" in err_lower
+        or "error opening archive" in err_lower
+    )
+    if needs_temp_relocation:
+        sys_temp_dir = Path(tempfile.gettempdir()).resolve()
+        try:
+            archive.resolve().relative_to(sys_temp_dir)
+            already_in_sys_temp = True
+        except (ValueError, OSError):
+            already_in_sys_temp = False
+
+        if not already_in_sys_temp and archive.is_file():
+            log.info(
+                "Extraction tool failed to open archive at %s; relocating to system temp and retrying...",
+                archive,
+            )
+            staging_copy = sys_temp_dir / f"mist_ext_{int(time.time())}_{archive.name}"
+            try:
+                shutil.copy2(archive, staging_copy)
+                success, last_error = _execute_extraction(staging_copy)
+                if success:
+                    return
+            except Exception as exc:
+                log.warning("System temp relocation extraction failed: %s", exc)
+            finally:
+                staging_copy.unlink(missing_ok=True)
 
     err_lower = last_error.lower()
     is_corrupted = any(

@@ -31,7 +31,6 @@ from Core.images import ImageLoader
 from Core.library import LibraryManager
 from Core.sources import CatalogItem, SearchPage, SourceBase, SourceRegistry
 from Scripts.ankergames import AnkerGamesSource
-from Scripts.steamrip import SteamRipSource
 from UI.common import app_icon, shutdown_async, theme_color
 from UI.context import AppContext
 from UI.detail_view import GameDetailView, HeroBanner, InstallDialog, _sanitize_title
@@ -94,39 +93,6 @@ class TestAnkerGames(unittest.TestCase):
             self.assertNotIn("class=\"fixed", detailed.system_requirements)
 
 
-class TestSteamRip(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.source = SteamRipSource()
-
-    def test_steamrip_search(self):
-        page = self.source.search(query="Celeste", page=1)
-        self.assertGreater(len(page.items), 0, "SteamRip should find results for Celeste")
-        first = page.items[0]
-        self.assertEqual(first.source, "steamrip")
-        self.assertIn("celeste", first.title.lower())
-        self.assertTrue(first.store_url.startswith("https://steamrip.com/"))
-        self.assertFalse(page.has_more, "Single-page result (Celeste) must not report has_more=True")
-
-    def test_steamrip_empty_query_browse(self):
-        """Verify browsing with empty query returns catalog items instead of 0 results."""
-        page = self.source.search(query="", page=1)
-        self.assertGreater(len(page.items), 0, "SteamRip empty browse query must return items (> 0)")
-        self.assertTrue(all(it.source == "steamrip" for it in page.items))
-        self.assertTrue(all(bool(it.title) for it in page.items))
-        self.assertTrue(page.has_more, "Empty browse query should have further pages")
-
-    def test_steamrip_details_and_mirrors(self):
-        page = self.source.search(query="Celeste", page=1)
-        self.assertGreater(len(page.items), 0)
-        item = page.items[0]
-        detailed = self.source.details(item)
-        self.assertTrue(detailed.version, "Should detect version")
-        mirrors = detailed.extra.get("mirrors", [])
-        self.assertGreater(len(mirrors), 0, "SteamRip should extract download mirrors")
-        self.assertTrue(any(m["url"].startswith("http") for m in mirrors))
-
-
 class TestTitleSanitizer(unittest.TestCase):
     def test_sanitize_matches_cross_source(self):
         t1 = "The Witcher 3: Wild Hunt"
@@ -169,13 +135,87 @@ class TestStoreAndMultiSource(unittest.TestCase):
         self.assertTrue(self.store.store_view.uniformItemSizes())
 
     def test_all_sources_aggregation(self):
-        """Multi-source search aggregates catalog items and GOG/sample are removed."""
-        sources = self.ctx.sources.all()
-        self.assertGreater(len(sources), 1, "Should have multiple configured sources")
+        """Catalog items configured and SteamRip/GOG/sample are removed."""
         self.assertIsNone(self.ctx.sources.get("sample"), "Sample catalog must be removed")
         self.assertIsNone(self.ctx.sources.get("gog"), "GOG source must be removed")
+        self.assertIsNone(self.ctx.sources.get("steamrip"), "SteamRip must be removed")
         self.assertIsNotNone(self.ctx.sources.get("ankergames"), "AnkerGames must be present")
-        self.assertIsNotNone(self.ctx.sources.get("steamrip"), "SteamRip must be present")
+
+    def test_ankergames_source_standalone_frozen_loading(self):
+        """Simulate standalone PyInstaller frozen mode (sys.frozen = True, sys._MEIPASS)."""
+        temp_dir = Path(tempfile.mkdtemp(prefix="test_frozen_meipass_"))
+        s_dir = temp_dir / "Scripts"
+        s_dir.mkdir()
+        shutil.copy(APP_DIR / "Scripts" / "ankergames.py", s_dir / "ankergames.py")
+        shutil.copy(APP_DIR / "Scripts" / "__init__.py", s_dir / "__init__.py")
+
+        orig_frozen = getattr(sys, "frozen", False)
+        orig_meipass = getattr(sys, "_MEIPASS", None)
+        try:
+            sys.frozen = True
+            sys._MEIPASS = str(temp_dir)
+            registry = SourceRegistry(self.config)
+            registry.load()
+            self.assertIn("ankergames", [s.id for s in registry.all()])
+            anker = registry.get("ankergames")
+            self.assertIsNotNone(anker)
+            self.assertEqual(anker.name, "Anker Games")
+            self.assertTrue(anker.can_download)
+            self.assertEqual(len(registry.errors), 0, f"Registry errors in frozen mode: {registry.errors}")
+        finally:
+            if orig_frozen:
+                sys.frozen = orig_frozen
+            elif hasattr(sys, "frozen"):
+                delattr(sys, "frozen")
+            if orig_meipass is not None:
+                sys._MEIPASS = orig_meipass
+            elif hasattr(sys, "_MEIPASS"):
+                delattr(sys, "_MEIPASS")
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_ankergames_source_fallback_corrupted_filesystem(self):
+        """When ankergames.py on filesystem is corrupted, fallback restores the source."""
+        temp_dir = Path(tempfile.mkdtemp(prefix="test_corrupted_meipass_"))
+        s_dir = temp_dir / "Scripts"
+        s_dir.mkdir()
+        (s_dir / "ankergames.py").write_text("def broken_syntax(:::", encoding="utf-8")
+
+        orig_frozen = getattr(sys, "frozen", False)
+        orig_meipass = getattr(sys, "_MEIPASS", None)
+        try:
+            sys.frozen = True
+            sys._MEIPASS = str(temp_dir)
+            registry = SourceRegistry(self.config, scripts_dir=s_dir)
+            registry.load()
+            self.assertIn("ankergames", [s.id for s in registry.all()], "Fallback must restore ankergames source")
+            self.assertEqual(len(registry.errors), 0, f"Errors should be cleared on fallback recovery: {registry.errors}")
+        finally:
+            if orig_frozen:
+                sys.frozen = orig_frozen
+            elif hasattr(sys, "frozen"):
+                delattr(sys, "frozen")
+            if orig_meipass is not None:
+                sys._MEIPASS = orig_meipass
+            elif hasattr(sys, "_MEIPASS"):
+                delattr(sys, "_MEIPASS")
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_ankergames_loading_resilience_missing_asyncio(self):
+        """Ensure ankergames source loads even when asyncio is not available at script import time."""
+        with mock.patch.dict(sys.modules, {"asyncio": None}):
+            registry = SourceRegistry(self.config)
+            registry.load()
+            self.assertIsNotNone(registry.get("ankergames"), "Anker Games must load even if asyncio import is blocked")
+
+    def test_ankergames_source_attributes_and_tabs(self):
+        """Verify ankergames source attributes and presence in store view tabs."""
+        anker = self.ctx.sources.get("ankergames")
+        self.assertIsNotNone(anker)
+        self.assertEqual(anker.id, "ankergames")
+        self.assertEqual(anker.priority, 1)
+        self.assertTrue(anker.can_download)
+        tab_ids = self.store._source_ids
+        self.assertIn("ankergames", tab_ids)
 
 
 class TestDetailViewAndInstallDialog(unittest.TestCase):
@@ -914,7 +954,7 @@ class TestMistEnhancements(unittest.TestCase):
             {
                 "id": f"game_{i}",
                 "title": f"Sample Game {i}",
-                "source": "ankergames" if i % 2 == 0 else "steamrip",
+                "source": "ankergames",
                 "cover_url": "",
                 "hero_url": "",
                 "size_bytes": 1024 * 1024 * 500,

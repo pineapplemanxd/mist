@@ -459,8 +459,9 @@ class GameDetailView(QWidget):
         self.meta_lbl.setObjectName("HeroSub")
         mid_col.addWidget(self.meta_lbl)
 
-        self.genres_layout = FlowLayout()
-        mid_col.addLayout(self.genres_layout)
+        self.genres_container = QWidget()
+        self.genres_layout = FlowLayout(self.genres_container, spacing=6)
+        mid_col.addWidget(self.genres_container)
         mid_col.addStretch(1)
 
         # Source Selector row on detail page
@@ -689,6 +690,12 @@ class GameDetailView(QWidget):
 
             def on_done(detailed: CatalogItem):
                 if self.catalog_item == item:
+                    if not detailed.genres and item.genres:
+                        detailed.genres = list(item.genres)
+                    if not detailed.cover_url and item.cover_url:
+                        detailed.cover_url = item.cover_url
+                    if not detailed.hero_url and item.hero_url:
+                        detailed.hero_url = item.hero_url
                     self.catalog_item = detailed
                     self._populate_from_item(detailed, existing)
 
@@ -744,10 +751,12 @@ class GameDetailView(QWidget):
         # Update genres
         while self.genres_layout.count():
             item = self.genres_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+            if item and item.widget():
+                w = item.widget()
+                w.setParent(None)
+                w.deleteLater()
         for gn in genres:
-            self.genres_layout.addWidget(chip(gn))
+            self.genres_layout.addWidget(chip(gn, self.genres_container))
 
         # Update source selector
         self.source_selector.blockSignals(True)
@@ -915,12 +924,24 @@ class GameDetailView(QWidget):
 
     def _update_images(self):
         dpr = self.devicePixelRatioF()
+        w, h = 140, 210
+        pm = None
         if hasattr(self, "_curr_cover") and self._curr_cover:
-            pm = self.ctx.images.get(self._curr_cover, QSize(int(140 * dpr), int(210 * dpr)))
-            if pm and not pm.isNull():
-                self.cover_lbl.setPixmap(pm)
-            else:
-                self.cover_lbl.setText("Cover")
+            pm = self.ctx.images.get(self._curr_cover, QSize(int(w * dpr), int(h * dpr)), crop=True)
+
+        if pm and not pm.isNull():
+            self.cover_lbl.setPixmap(pm)
+        else:
+            title = self.title_lbl.text() or "Game"
+            ph_pm = QPixmap(int(w * dpr), int(h * dpr))
+            ph_pm.setDevicePixelRatio(dpr)
+            ph_pm.fill(Qt.transparent)
+            p = QPainter(ph_pm)
+            p.setRenderHint(QPainter.Antialiasing)
+            p.setRenderHint(QPainter.SmoothPixmapTransform)
+            paint_placeholder(p, QRect(0, 0, w, h), title, font_px=22)
+            p.end()
+            self.cover_lbl.setPixmap(ph_pm)
 
         # Load screenshots in gallery
         for i, s_url in enumerate(self._screenshot_urls):

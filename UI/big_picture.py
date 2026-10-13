@@ -991,7 +991,6 @@ class BigPictureWindow(QWidget):
         featured_items = items[:8]
         latest_items = items[8:16] if len(items) > 8 else items[:6]
         anker_items = [it for it in items if it.get("source") == "ankergames"]
-        steamrip_items = [it for it in items if it.get("source") == "steamrip"]
 
         shelf_defs = [
             ("FEATURED & TRENDING", featured_items),
@@ -999,8 +998,6 @@ class BigPictureWindow(QWidget):
         ]
         if anker_items:
             shelf_defs.append(("ANKER GAMES ARCHIVE", anker_items))
-        if steamrip_items:
-            shelf_defs.append(("STEAMRIP COLLECTION", steamrip_items))
 
         valid_shelf_defs = [(title, s_items) for title, s_items in shelf_defs if s_items]
 
